@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成绩计算</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1b1b;
+    --muted: #6b6b6b;
+    --line: #d2d2d2;
+    --field: #ffffff;
+    --panel: #f6f6f6;
+    --accent: #1b1b1b;
+    --accent-fg: #ffffff;
+    --pass: #157f3a;
+    --fail: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111111;
+      --fg: #ececec;
+      --muted: #a0a0a0;
+      --line: #3a3a3a;
+      --field: #1b1b1b;
+      --panel: #181818;
+      --accent: #ececec;
+      --accent-fg: #111111;
+      --pass: #4ade80;
+      --fail: #ff7b72;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 30px 20px 70px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0 0 26px 0;
+  }
+
+  h2 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 14px 0;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px 30px;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .field label {
+    font-size: 17px;
+  }
+
+  .field .hint {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  input[type="number"] {
+    width: 130px;
+    padding: 9px 12px;
+    font-size: 18px;
+    font-family: inherit;
+    color: var(--fg);
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    text-align: right;
+  }
+
+  input[type="number"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 26px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 17px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--field);
+    color: var(--fg);
+    cursor: pointer;
+  }
+
+  button:hover { opacity: 0.85; }
+  button:active { transform: translateY(1px); }
+
+  button.primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-top: 24px;
+  }
+
+  .result-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 44px;
+  }
+
+  .result-item .k {
+    display: block;
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .result-item .v {
+    font-size: 27px;
+    font-weight: 600;
+  }
+
+  .result-item .v small {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .pass { color: var(--pass); }
+  .fail { color: var(--fail); }
+
+  details {
+    margin-top: 16px;
+  }
+
+  summary {
+    cursor: pointer;
+    font-size: 16px;
+    list-style: none;
+    padding: 4px 0;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸ ";
+    color: var(--muted);
+  }
+  details[open] summary::before {
+    content: "▾ ";
+  }
+
+  .detail-list {
+    margin-top: 8px;
+    font-size: 16px;
+    color: var(--fg);
+  }
+
+  .detail-list div {
+    display: flex;
+    justify-content: space-between;
+    max-width: 340px;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .detail-list div:last-child { border-bottom: none; }
+  .detail-list .muted { color: var(--muted); }
+
+  .archive-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 44px;
+    margin-bottom: 14px;
+  }
+
+  .archive-title .count {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .empty {
+    color: var(--muted);
+    font-size: 16px;
+    padding: 16px 0;
+  }
+
+  .record {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0 16px;
+    margin-bottom: 12px;
+    background: var(--field);
+  }
+
+  .record summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    padding: 13px 0;
+    font-size: 16px;
+  }
+
+  .record summary::before { content: ""; }
+
+  .record .date {
+    color: var(--muted);
+    font-size: 14px;
+    min-width: 150px;
+  }
+
+  .record .total {
+    font-weight: 600;
+  }
+
+  .record .tag {
+    font-size: 14px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid currentColor;
+  }
+
+  .record .body {
+    padding: 4px 0 16px;
+  }
+
+  .record .body .detail-list div {
+    max-width: 100%;
+  }
+
+  .record .del {
+    font-size: 15px;
+    padding: 5px 14px;
+    margin-top: 10px;
+  }
+
+  .footnote {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 34px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>成绩计算</h1>
+  <p class="sub">输入各科分数，计算总分、百分比与及格状态，可保存成档案。</p>
+
+  <div class="fields">
+    <div class="field">
+      <label for="chinese">中文</label>
+      <input id="chinese" type="number" step="0.1" placeholder="满分 200">
+    </div>
+    <div class="field">
+      <label for="engPaper">英文 Paper</label>
+      <input id="engPaper" type="number" step="0.1" placeholder="满分 80">
+    </div>
+    <div class="field">
+      <label for="engReader">英文 Reader</label>
+      <input id="engReader" type="number" step="0.1" placeholder="满分 20">
+    </div>
+    <div class="field">
+      <label for="math">数学 Marks</label>
+      <input id="math" type="number" step="0.1" placeholder="满分 65">
+    </div>
+    <div class="field">
+      <label for="is">IS</label>
+      <input id="is" type="number" step="0.1" placeholder="满分 100">
+    </div>
+    <div class="field">
+      <label for="cesPaper">CES Paper</label>
+      <input id="cesPaper" type="number" step="0.1" placeholder="满分 77">
+    </div>
+    <div class="field">
+      <label for="cesHw">CES HW</label>
+      <input id="cesHw" type="number" step="0.1" placeholder="满分 15">
+    </div>
+    <div class="field">
+      <label for="chis">CHIS</label>
+      <input id="chis" type="number" step="0.1" placeholder="满分 100">
+    </div>
+    <div class="field">
+      <label for="hist">HIST</label>
+      <input id="hist" type="number" step="0.1" placeholder="满分 100">
+    </div>
+    <div class="field">
+      <label for="geog">GEOG</label>
+      <input id="geog" type="number" step="0.1" placeholder="满分 100">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" type="button" id="calcBtn">计算</button>
+    <button type="button" id="saveBtn">保存档案</button>
+    <button type="button" id="clearBtn">清空输入</button>
+  </div>
+
+  <div class="panel" id="result" hidden>
+    <div class="result-grid">
+      <div class="result-item">
+        <span class="k">总分</span>
+        <span class="v"><span id="rTotal">0</span> <small>/ 1200</small></span>
+      </div>
+      <div class="result-item">
+        <span class="k">百分比</span>
+        <span class="v" id="rPercent">0.00%</span>
+      </div>
+      <div class="result-item">
+        <span class="k">等级</span>
+        <span class="v" id="rGrade">—</span>
+      </div>
+    </div>
+
+    <details>
+      <summary>各科明细</summary>
+      <div class="detail-list" id="rDetail"></div>
+    </details>
+  </div>
+
+  <div class="archive-title">
+    <h2>已保存档案</h2>
+    <span class="count" id="archiveCount"></span>
+  </div>
+  <div id="archive"></div>
+
+  <p class="footnote">等级规则：总分百分比 ≥ 50% 为及格。每一科先四舍五入到整数，再相加得总分。</p>
+
+</div>
+
+<script>
+(function () {
+  var FULL_MARK = 1200;
+  var STORAGE_KEY = "score_archive_v1";
+
+  var LABELS = [
+    { key: "chinese", name: "中文" },
+    { key: "eng", name: "英文" },
+    { key: "math", name: "数学" },
+    { key: "is", name: "IS" },
+    { key: "ces", name: "CES" },
+    { key: "chis", name: "CHIS" },
+    { key: "hist", name: "HIST" },
+    { key: "geog", name: "GEOG" }
+  ];
+
+  var el = function (id) { return document.getElementById(id); };
+
+  function valueOf(id) {
+    var raw = el(id).value.trim();
+    if (raw === "") return 0;
+    var n = parseFloat(raw);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function allEmpty() {
+    var ids = ["chinese", "engPaper", "engReader", "math", "is",
+               "cesPaper", "cesHw", "chis", "hist", "geog"];
+    for (var i = 0; i < ids.length; i++) {
+      if (el(ids[i]).value.trim() !== "") return false;
+    }
+    return true;
+  }
+
+  function compute() {
+    var subject = {
+      chinese: Math.round(valueOf("chinese")),
+      eng: Math.round((valueOf("engPaper") + valueOf("engReader")) * 3),
+      math: Math.round(valueOf("math") / 65 * 200),
+      is: Math.round(valueOf("is")),
+      ces: Math.round(valueOf("cesPaper") / 77 * 85 + valueOf("cesHw")),
+      chis: Math.round(valueOf("chis")),
+      hist: Math.round(valueOf("hist")),
+      geog: Math.round(valueOf("geog"))
+    };
+
+    var total = 0;
+    for (var i = 0; i < LABELS.length; i++) {
+      total += subject[LABELS[i].key];
+    }
+
+    var percent = total / FULL_MARK * 100;
+
+    return {
+      subject: subject,
+      total: total,
+      percent: percent,
+      pass: percent >= 50
+    };
+  }
+
+  function percentText(p) {
+    return p.toFixed(2) + "%";
+  }
+
+  function showResult(r) {
+    el("result").hidden = false;
+    el("rTotal").textContent = r.total;
+    el("rPercent").textContent = percentText(r.percent);
+
+    var grade = el("rGrade");
+    grade.textContent = r.pass ? "及格" : "不及格";
+    grade.className = "v " + (r.pass ? "pass" : "fail");
+
+    var html = "";
+    for (var i = 0; i < LABELS.length; i++) {
+      var item = LABELS[i];
+      html += "<div><span>" + item.name + "</span><span>" +
+              r.subject[item.key] + "</span></div>";
+    }
+    el("rDetail").innerHTML = html;
+  }
+
+  function detailHtml(subject) {
+    var html = "";
+    for (var i = 0; i < LABELS.length; i++) {
+      var item = LABELS[i];
+      html += "<div><span>" + item.name + "</span><span>" +
+              subject[item.key] + "</span></div>";
+    }
+    return html;
+  }
+
+  function loadArchive() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function storeArchive(arr) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function renderArchive() {
+    var list = loadArchive();
+    var box = el("archive");
+    el("archiveCount").textContent = list.length ? "共 " + list.length + " 份" : "";
+
+    if (!list.length) {
+      box.innerHTML = '<p class="empty">还没有保存的档案。</p>';
+      return;
+    }
+
+    var html = "";
+    for (var i = 0; i < list.length; i++) {
+      var rec = list[i];
+      var tagClass = rec.pass ? "pass" : "fail";
+      html +=
+        '<details class="record">' +
+          '<summary>' +
+            '<span class="date">' + rec.time + '</span>' +
+            '<span class="total">' + rec.total + ' / ' + FULL_MARK + '</span>' +
+            '<span>' + percentText(rec.percent) + '</span>' +
+            '<span class="tag ' + tagClass + '">' + (rec.pass ? "及格" : "不及格") + '</span>' +
+          '</summary>' +
+          '<div class="body">' +
+            '<div class="detail-list">' + detailHtml(rec.subject) + '</div>' +
+            '<button type="button" class="del" data-del="' + i + '">删除这份档案</button>' +
+          '</div>' +
+        '</details>';
+    }
+    box.innerHTML = html;
+  }
+
+  function nowText() {
+    var d = new Date();
+    function p(n) { return n < 10 ? "0" + n : "" + n; }
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+           " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  el("calcBtn").addEventListener("click", function () {
+    showResult(compute());
+  });
+
+  el("saveBtn").addEventListener("click", function () {
+    if (allEmpty()) {
+      alert("请先输入至少一科分数。");
+      return;
+    }
+
+    var r = compute();
+    showResult(r);
+
+    var list = loadArchive();
+    list.unshift({
+      time: nowText(),
+      subject: r.subject,
+      total: r.total,
+      percent: r.percent,
+      pass: r.pass
+    });
+
+    if (!storeArchive(list)) {
+      alert("保存失败，浏览器可能不支持本地存储。");
+      return;
+    }
+
+    renderArchive();
+  });
+
+  el("clearBtn").addEventListener("click", function () {
+    var ids = ["chinese", "engPaper", "engReader", "math", "is",
+               "cesPaper", "cesHw", "chis", "hist", "geog"];
+    for (var i = 0; i < ids.length; i++) el(ids[i]).value = "";
+    el("result").hidden = true;
+  });
+
+  el("archive").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-del]");
+    if (!btn) return;
+    var idx = Number(btn.getAttribute("data-del"));
+    var list = loadArchive();
+    if (idx >= 0 && idx < list.length) {
+      list.splice(idx, 1);
+      storeArchive(list);
+      renderArchive();
+    }
+  });
+
+  renderArchive();
+})();
+</script>
+</body>
+</html>
